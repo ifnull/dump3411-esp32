@@ -8,6 +8,14 @@ No SDR/DSP is involved anywhere in dump3411's code — both radio paths receive 
 
 No hardware has been ordered yet, so this doc documents **two build tiers** rather than committing to one fixed design — pick based on budget and how much detection reliability matters, or start with the shared groundwork and decide later.
 
+## Open question: real-world BLE RID prevalence
+
+In testing dump3411 on the Pi, BLE Remote ID detections have not shown up at all — only Wi-Fi. A code read of `ble_feeder.py` didn't turn up an obvious bug: the UUID matching, service-data length handling, and message decode logic all look sound, and the code already logs a warning for any 0xFFFA service data it can't parse (so a total absence of even that warning means the adapter isn't seeing RID service-data advertisements at all, not that it's seeing-and-failing).
+
+That said, **dump3411's BLE receive path has never been validated against spec-compliant hardware** — dump3411's own `TESTING.md` only confirms an expected result for Wi-Fi, and its `TODO.md` has an explicitly unstarted item to validate against a real transmitter (`ArduPilot/ArduRemoteID` on an ESP32-S3, ~$10-15). Two plausible non-bug explanations also exist: DJI (the dominant consumer drone maker) implements Standard Remote ID primarily over Wi-Fi, and BLE Legacy Advertising has meaningfully shorter range than a decent external Wi-Fi adapter — so "Wi-Fi hits, no BLE hits" could just reflect what's actually in the air combined with a range mismatch, not a defect.
+
+**Why this matters here:** dual-radio mode dedicates an entire second board to BLE (RID scan + GATT peripheral for the phone app). If real-world BLE RID prevalence turns out to be genuinely low even with a confirmed-working receiver, that's a legitimate reason to treat BLE as an add-later enhancement rather than a load-bearing v1 assumption, and to prioritize solo/Wi-Fi-first work instead. **Before investing significant effort in dual-radio mode, validate the BLE receive path** using the same `ArduPilot/ArduRemoteID` ESP32-S3 bench transmitter Phase 1 already needs for Wi-Fi verification (see Verification below) — confirm dump3411's existing `ble_feeder.py` decodes it correctly, which rules the code out as the cause either way.
+
 ## Operating modes
 
 An ESP32 has a single 2.4 GHz radio shared between Wi-Fi and BLE. Running continuous Wi-Fi promiscuous capture (with channel hopping) *and* continuous BLE scanning on that one radio has no known-good precedent — Espressif's own coexistence docs note BLE scan windows can get truncated by Wi-Fi activity. That risk is the deciding factor between the two modes below.
@@ -100,6 +108,8 @@ At ~150-220 mA continuous with ~15-20% real-world derating (regulator loss, peri
 Phase 1 below is identical regardless of which mode you eventually land on — it only needs one ESP32-S3, so it's the right thing to build first even before deciding solo vs. dual-radio.
 
 1. **Phase 1 (shared) — Wi-Fi-only decode on an ESP32-S3, serial output.** ESP-IDF promiscuous mode + channel hop + Beacon/NAN vendor-IE parsing, shared `odid_parser` module, log decoded messages over USB-CDC serial. This is the only hardware you need to order to get started. Medium effort — mechanical port of `wifi_feeder.py`'s frame-walking logic to C, no radio-contention risk since it's the only radio in play yet.
+
+The same `ArduPilot/ArduRemoteID` ESP32-S3 bench transmitter Phase 1 needs for Wi-Fi verification also settles the [open BLE-prevalence question](#open-question-real-world-ble-rid-prevalence) above — worth running that check on dump3411's existing `ble_feeder.py` before committing real effort to dual-radio mode.
 
 Once Phase 1 works, fork based on which mode you're building:
 
