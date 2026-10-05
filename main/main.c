@@ -1,16 +1,19 @@
 /*
  * dump3411-esp32 firmware entry point.
  *
- * Phase 1 bring-up: report the chip and run the decoder self-test. Wi-Fi
- * capture lands here next (docs/ARCHITECTURE.md, Build order).
+ * Phase 1: report the chip, run the decoder self-test, then capture Wi-Fi
+ * Remote ID and log it over the console (docs/ARCHITECTURE.md, Build order).
  */
 #include "esp_chip_info.h"
+#include "esp_event.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nvs_flash.h"
 
 #include "selftest.h"
+#include "wifi_capture.h"
 
 static const char *TAG = "dump3411";
 
@@ -29,6 +32,15 @@ void app_main(void)
     } else {
         ESP_LOGE(TAG, "decoder self-test FAILED");
     }
+
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(wifi_capture_start());
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(10000));

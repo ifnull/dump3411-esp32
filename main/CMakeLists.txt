@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "selftest.c"
+    SRCS "main.c" "selftest.c" "wifi_capture.c"
     INCLUDE_DIRS "."
-    REQUIRES odid
+    REQUIRES odid esp_wifi esp_event nvs_flash
 )
