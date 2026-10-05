@@ -9,9 +9,9 @@
  * Output (stdout) is the fixture format odid_dump reads: 'm <hex>' for an ODID
  * message or pack, 'f <hex>' for an 802.11 frame. Regenerate with:
  *
- *   cmake -S host -B build/host -DODID_FIXTURE_GEN=ON
- *   cmake --build build/host --target gen_fixtures
- *   build/host/gen_fixtures tests/parity/fixtures/encoder_expected.jsonl \
+ *   cmake -S host -B build-host -DODID_FIXTURE_GEN=ON
+ *   cmake --build build-host --target gen_fixtures
+ *   build-host/gen_fixtures tests/parity/fixtures/encoder_expected.jsonl \
  *       > tests/parity/fixtures/encoder.txt
  */
 #include <stdio.h>

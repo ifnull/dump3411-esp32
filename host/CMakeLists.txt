@@ -1,7 +1,7 @@
 # Native (non-ESP) build of the odid component plus the tools the parity
 # tests use. No ESP-IDF needed:
 #
-#   cmake -S host -B build/host && cmake --build build/host
+#   cmake -S host -B build-host && cmake --build build-host
 #   python3 tests/parity/run_parity.py
 cmake_minimum_required(VERSION 3.16)
 project(odid_host C)

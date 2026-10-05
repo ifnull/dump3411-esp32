@@ -12,7 +12,7 @@ Two checks run on every fixture:
    reference encoder was given. Parity alone can't catch a bug the C port
    copied faithfully from dump3411; this can.
 
-    cmake -S host -B build/host && cmake --build build/host
+    cmake -S host -B build-host && cmake --build build-host
     python3 tests/parity/run_parity.py [--dump3411 PATH]
 
 dump3411 is imported from a checkout (default: ../dump3411 next to this repo,
@@ -28,7 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = Path(__file__).parent / "fixtures"
-ODID_DUMP = ROOT / "build" / "host" / "odid_dump"
+ODID_DUMP = ROOT / "build-host" / "odid_dump"
 
 # One wire LSB per field, the most the C and Python values may differ by
 # (field-level semantic parity; see the 2026-08-14 design doc). Encodings are
@@ -192,7 +192,7 @@ def main() -> int:
         print(f"dump3411 not found at {dump3411_dir} (use --dump3411 or DUMP3411_DIR)")
         return 2
     if not ODID_DUMP.exists():
-        print(f"{ODID_DUMP} missing; build it: cmake -S host -B build/host && cmake --build build/host")
+        print(f"{ODID_DUMP} missing; build it: cmake -S host -B build-host && cmake --build build-host")
         return 2
 
     oracle = Oracle(dump3411_dir)
