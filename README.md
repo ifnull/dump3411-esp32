@@ -10,27 +10,33 @@ dump3411 decodes the ASTM F3411/OpenDroneID Remote ID broadcasts that compliant 
 
 It is **not** a literal port. The Python codebase's radio-integration layer (BlueZ/D-Bus, raw `AF_PACKET` sockets, `iw`/NetworkManager, systemd/journald) has no equivalent on an RTOS target, so this is a from-scratch rewrite against ESP-IDF. The message-parsing logic itself — small, dependency-free byte/bitfield unpacking, no SDR/DSP/ML anywhere — transfers over conceptually and is the part worth reusing as a reference.
 
-## Why two boards
+## Two build tiers
 
-An ESP32 has a single 2.4 GHz radio shared between Wi-Fi and BLE. Running continuous Wi-Fi promiscuous capture (with channel hopping) *and* continuous BLE scanning on that one radio has no known-good precedent — Espressif's own coexistence docs note BLE scan windows can get truncated by Wi-Fi activity. Rather than build on that open question, this design uses **two small boards, each owning one radio**, closer to how dump3411 already runs two independent physical radios on the Pi:
+This project targets two modes rather than one fixed design — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#operating-modes) for the full writeup:
 
-- **Wi-Fi sensor board** (ESP32-S3) — promiscuous-mode capture, channel hop, Wi-Fi Beacon/NAN RID decode.
-- **BLE + coordinator board** (ESP32-C3) — BLE RID scan, merges in the S3's detections over UART, and runs a BLE GATT peripheral so a phone can pull live detections without ever touching the busy Wi-Fi radio.
+- **Solo mode** — one ESP32-S3 does both Wi-Fi and BLE scanning, time-sliced on its single radio. Cheapest entry point (no second board), but this is the budget tier: sustained concurrent Wi-Fi+BLE capture on one radio has no known-good precedent, so reliability has to be bench-measured, not assumed. Output is a no-solder display and/or a USB-serial tether to Android (not BLE — that radio's already busy).
+- **Dual-radio mode** — a second ESP32-C3 owns BLE outright (RID scan + a BLE GATT peripheral for phone connectivity), while the ESP32-S3 does nothing but Wi-Fi. Closer to how dump3411 already runs two independent radios on the Pi, and the mode with no open coexistence question. Output is BLE GATT to a companion phone app (iOS + Android).
 
-There's no onboard Wi-Fi dashboard, GPS, or compass by design — the Wi-Fi radio can't spare airtime to host an AP, and a phone's own GPS/compass/map already outclass anything embeddable. A companion phone app (separate, future repo) is the intended consumer of the BLE GATT feed.
+External-antenna vs. onboard-antenna boards is an independent choice on top of either mode.
+
+There's no onboard Wi-Fi dashboard, GPS, or compass by design in dual-radio mode — the Wi-Fi radio can't spare airtime to host an AP, and a phone's own GPS/compass/map already outclass anything embeddable. A companion phone app (separate, future repo) is the intended consumer of the BLE GATT feed.
 
 ## Hardware
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#hardware--bom-handheld-build) for the full BOM. Short version: ESP32-S3 dev board + ESP32-C3 dev board + a single 1000-1500 mAh LiPo cell on whichever board has built-in USB-C charging, wired together over UART.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#hardware--bom) for the full BOM per mode. Solo mode: one ESP32-S3 dev board + battery. Dual-radio mode: adds an ESP32-C3 board wired to the S3 over UART.
+
+The reference hardware is the [Seeed XIAO build](./docs/ARCHITECTURE.md#reference-build--seeed-xiao-solo--dual-radio-upgrade-path): a XIAO ESP32-S3 in Seeed's ePaper driver board with a 2.9" mono e-ink panel, an optional L76K GNSS module, and a XIAO ESP32-C3 that takes over the socket for dual-radio mode. Any ESP32-S3 board can run the firmware; see [adding support for a new board](./docs/ARCHITECTURE.md#adding-support-for-a-new-board).
 
 ## Roadmap
 
-1. **Phase 1** — Wi-Fi-only RID decode on the S3 board, logged over serial. *(current phase)*
-2. **Phase 2** — BLE-only RID decode on the C3 board, plus the S3→C3 UART link.
-3. **Phase 3** — Merged tracker + BLE GATT peripheral on the C3, with a bench check that concurrent BLE scan + GATT peripheral holds up.
-4. **Phase 4** — Battery bring-up and real power-draw measurement.
+**Phase 1** (build this first, regardless of mode) — Wi-Fi-only RID decode on an ESP32-S3, logged over serial. *(current phase — only hardware needed to get started)*
 
-Full detail, including the component-by-component mapping from dump3411's Python source to its ESP-IDF equivalent, the power budget, and verification steps per phase, is in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+Then fork based on which mode you build:
+
+- **Solo path:** add BLE scan on the same chip and measure the coexistence tradeoff → add display/USB-serial output → battery bring-up.
+- **Dual-radio path:** add a C3 board for BLE + the UART link → merged tracker + BLE GATT peripheral on the C3 → battery bring-up.
+
+Full detail, including the component-by-component mapping from dump3411's Python source to its ESP-IDF equivalent, the power budget per mode, and verification steps per phase, is in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## Relationship to dump3411
 
