@@ -1,0 +1,4 @@
+# Variant: BLE controller and NimBLE host on core 1, away from the Wi-Fi task
+# on core 0 (the usual coexistence recommendation).
+CONFIG_BT_CTRL_PINNED_TO_CORE_1=y
+CONFIG_BT_NIMBLE_PINNED_TO_CORE_1=y
