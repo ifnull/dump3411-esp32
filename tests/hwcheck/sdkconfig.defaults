@@ -1,0 +1,3 @@
+# Check every peripheral the board can carry.
+CONFIG_DUMP3411_ENABLE_EINK_DISPLAY=y
+CONFIG_DUMP3411_ENABLE_GNSS=y
