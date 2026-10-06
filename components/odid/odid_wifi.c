@@ -15,13 +15,30 @@
 static const uint8_t ASTM_OUI[3] = {0xFA, 0x0B, 0xBC};
 #define ASTM_OUI_TYPE 0x0D
 
+/*
+ * Parrot SA's OUI. Some Remote ID beacons (Parrot, and the French Direct
+ * Remote ID scheme) carry the ASTM layout under it. Parrot uses the OUI for
+ * other vendor elements too, so it only counts when a valid Message Pack
+ * follows.
+ */
+static const uint8_t PARROT_OUI[3] = {0x90, 0x3A, 0xE6};
+
 static const uint8_t NAN_OUI[3] = {0x50, 0x6F, 0x9A};
 #define NAN_OUI_TYPE 0x13
 
 /* First 6 bytes of SHA-256("org.opendroneid.remoteid"). */
 static const uint8_t ODID_NAN_SERVICE_ID[6] = {0x88, 0x69, 0x19, 0x9D, 0x92, 0x09};
 
-/* Walk the beacon IE chain for the ASTM vendor IE (_extract_beacon_rid). */
+/* _is_message_pack: type 0xF, 25-byte messages, 1-9 of them, all present. */
+static bool is_message_pack(const uint8_t *p, size_t len)
+{
+    if (len < 3 || (p[0] >> 4) != 0xF || p[1] != 25) {
+        return false;
+    }
+    return p[2] >= 1 && p[2] <= 9 && len >= 3 + (size_t)p[2] * 25;
+}
+
+/* Walk the beacon IE chain for the Remote ID vendor IE (_extract_beacon_rid). */
 static bool extract_beacon(const uint8_t *body, size_t len,
                            const uint8_t **payload, size_t *payload_len)
 {
@@ -35,8 +52,14 @@ static bool extract_beacon(const uint8_t *body, size_t len,
         }
         if (tag_id == IE_VENDOR_SPECIFIC) {
             const uint8_t *info = body + offset + 2;
+            /* OUI(3) + vendor type(1) + send counter(1), then the message. */
             if (tag_len >= 6 && memcmp(info, ASTM_OUI, 3) == 0 && info[3] == ASTM_OUI_TYPE) {
-                /* OUI(3) + vendor type(1) + send counter(1), then the message. */
+                *payload     = info + 5;
+                *payload_len = tag_len - 5;
+                return true;
+            }
+            if (tag_len >= 6 && memcmp(info, PARROT_OUI, 3) == 0 &&
+                is_message_pack(info + 5, tag_len - 5)) {
                 *payload     = info + 5;
                 *payload_len = tag_len - 5;
                 return true;
