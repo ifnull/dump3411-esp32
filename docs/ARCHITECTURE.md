@@ -16,6 +16,8 @@ That said, **dump3411's BLE receive path has never been validated against spec-c
 
 **Why this matters here:** dual-radio mode dedicates an entire second board to BLE (RID scan + GATT peripheral for the phone app). If real-world BLE RID prevalence turns out to be genuinely low even with a confirmed-working receiver, that's a legitimate reason to treat BLE as an add-later enhancement rather than a load-bearing v1 assumption, and to prioritize solo/Wi-Fi-first work instead. **Before investing significant effort in dual-radio mode, validate the BLE receive path** using the same `ArduPilot/ArduRemoteID` ESP32-S3 bench transmitter Phase 1 already needs for Wi-Fi verification (see Verification below) — confirm dump3411's existing `ble_feeder.py` decodes it correctly, which rules the code out as the cause either way.
 
+**Update (2026-10-05):** checked with the bench transmitter in [`tools/rid-transmitter`](../tools/rid-transmitter/README.md) (an ESP32-C3 broadcasting a simulated drone). On a Linux laptop, dump3411's own BLE decoding (`extract_rid_payload` + `decode_rid_message`, fed by `bleak`) decoded all five message types from Bluetooth 4 legacy adverts, with values matching what was sent once dump3411's Location and System decoding fixes were applied. So the receive code isn't why the Pi saw no BLE; what's actually in the air and range remain the likely explanations. Bluetooth 5 long range wasn't received on that laptop's adapter, so that path is still unvalidated.
+
 ## Prior art: Sky-Spy
 
 [Sky-Spy](https://github.com/colonelpanichacks/Sky-Spy) (part of the `colonelpanichacks`/OUI-SPY suite) is an existing ESP32 Remote ID detector with real community adoption. This project references Sky-Spy's ESP32 radio wiring (promiscuous Wi-Fi capture, channel handling, BLE scan setup) as implementation prior art for Phase 1. The message decoding is not borrowed: `odid_parser` is derived from dump3411's Python so it can be checked field-for-field against dump3411's output.
@@ -240,9 +242,11 @@ At ~150-220 mA continuous with ~15-20% real-world derating (regulator loss, peri
 
 Phase 1 below is identical regardless of which mode you eventually land on — it only needs one ESP32-S3, so it's the right thing to build first even before deciding solo vs. dual-radio.
 
-1. **Phase 1 (shared) — Wi-Fi-only decode on an ESP32-S3, serial output.** ESP-IDF promiscuous mode + channel hop + Beacon/NAN vendor-IE parsing, shared `odid_parser` module, log decoded messages over USB-CDC serial. This is the only hardware you need to order to get started. Medium effort — mechanical port of `wifi_feeder.py`'s frame-walking logic to C, no radio-contention risk since it's the only radio in play yet.
+1. **Phase 1 (shared) — Wi-Fi-only decode on an ESP32-S3, serial output.** ESP-IDF promiscuous mode + channel hop + Beacon/NAN vendor-IE parsing, shared `odid_parser` module, log decoded messages over USB-CDC serial. Medium effort — mechanical port of `wifi_feeder.py`'s frame-walking logic to C, no radio-contention risk since it's the only radio in play yet.
 
-The same `ArduPilot/ArduRemoteID` ESP32-S3 bench transmitter Phase 1 needs for Wi-Fi verification also settles the [open BLE-prevalence question](#open-question-real-world-ble-rid-prevalence) above — worth running that check on dump3411's existing `ble_feeder.py` before committing real effort to dual-radio mode.
+    **Status: working on a XIAO ESP32-S3.** `components/odid` holds the decoder, the 802.11 Beacon/NAN extraction and a port of dump3411's tracker, all checked against dump3411 (see [Verification](#verification)). The firmware captures with channel hopping, tracks drones and logs a per-drone summary over USB serial, and has been checked over the air against the bench transmitter. Still to do: written notes on how Sky-Spy and ArduRemoteID set up the radio, and a short Wi-Fi + BLE coexistence smoke test on the S3 as an early data point for Phase S2.
+
+The bench transmitter in [`tools/rid-transmitter`](../tools/rid-transmitter/README.md) (an ESP32-C3 sending all four transports at once) serves both the Wi-Fi verification and the [open BLE-prevalence question](#open-question-real-world-ble-rid-prevalence) above.
 
 Once Phase 1 works, fork based on which mode you're building:
 
@@ -262,7 +266,11 @@ Phone app implementation is intentionally out of scope in this repo — once Pha
 
 ## Verification
 
-- Phase 1: confirm decoded Wi-Fi Beacon/NAN RID messages over serial match a known transmitter's broadcast (dump3411's existing `ArduPilot/ArduRemoteID`-on-ESP32-S3 bench transmitter setup described in its `TESTING.md` is directly reusable here), field-for-field against what `wifi_feeder.py` decodes from the same transmission on the Pi.
+- Phase 1, in three host-side checks plus one on hardware (commands in the [README](../README.md#building-and-testing)):
+  - `tests/parity/run_parity.py` decodes every fixture with the C decoder and with dump3411's `wifi_feeder.py` and compares field by field (floats within one wire LSB). Fixtures are frames built by the OpenDroneID reference encoder (`host/gen_fixtures.c`) plus hand-built malformed and lookalike frames (`tests/parity/make_malformed.py`); the host tools run under ASan/UBSan.
+  - The same script checks both decoders against the values the reference encoder was given. Parity alone would pass a bug the port copied from dump3411; this check is what found dump3411's Location flag and System offset bugs.
+  - `tests/tracker/run_tracker_parity.py` replays timed scripts (hand-written rules plus seeded random streams) through the C tracker and through dump3411's `tracker.py` with its clock injected, comparing every snapshot, change and expiry.
+  - On hardware, the S3's serial log is compared against the bench transmitter's log of what it sent.
 - Phase S2 / D2: same check for BLE-path decode correctness; for the dual-radio path, also confirm UART-forwarded Wi-Fi detections arrive intact on the C3.
 - Phase S2 specifically: quantify Wi-Fi-only vs. BLE-only vs. combined capture rate on the solo board — this number is what decides whether solo mode is viable as-is or needs further tuning (or should be abandoned in favor of dual-radio mode).
 - Phase D3: connect a BLE central (a phone's Bluetooth settings, or a generic BLE explorer app like nRF Connect) to confirm the GATT service is discoverable and streams detection notifications correctly while a scan is actively running; separately measure whether enabling the GATT peripheral role changes BLE RID capture rate versus scan-only.

@@ -2,7 +2,7 @@
 
 A battery-powered, handheld Remote ID drone detector — the firmware companion to [dump3411](https://github.com/ifnull/dump3411), reimplemented for standalone ESP32 hardware instead of a Raspberry Pi.
 
-**Status: early planning / Phase 1 not yet started.** Nothing in this repo runs yet. See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full design.
+**Status: Phase 1 in progress.** On a XIAO ESP32-S3 the firmware captures Wi-Fi Remote ID (Beacon and NAN), decodes it and tracks drones, logging over USB serial. The decoder and tracker are tested against dump3411's. No display or Bluetooth yet. See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full design.
 
 ## What this is
 
@@ -29,7 +29,7 @@ The reference hardware is the [Seeed XIAO build](./docs/ARCHITECTURE.md#referenc
 
 ## Roadmap
 
-**Phase 1** (build this first, regardless of mode) — Wi-Fi-only RID decode on an ESP32-S3, logged over serial. *(current phase — only hardware needed to get started)*
+**Phase 1** (build this first, regardless of mode) — Wi-Fi-only RID decode on an ESP32-S3, logged over serial. *(current phase: capture, decode and tracking work; see the [status](./docs/ARCHITECTURE.md#build-order))*
 
 Then fork based on which mode you build:
 
@@ -37,6 +37,30 @@ Then fork based on which mode you build:
 - **Dual-radio path:** add a C3 board for BLE + the UART link → merged tracker + BLE GATT peripheral on the C3 → battery bring-up.
 
 Full detail, including the component-by-component mapping from dump3411's Python source to its ESP-IDF equivalent, the power budget per mode, and verification steps per phase, is in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
+## Building and testing
+
+The tests run on an ordinary Linux or macOS machine, no ESP-IDF needed. They compare against a dump3411 checkout next to this repo (or wherever `DUMP3411_DIR` points):
+
+```sh
+cmake -S host -B build-host && cmake --build build-host
+python3 tests/parity/run_parity.py            # decoder vs dump3411, and vs the reference encoder's values
+python3 tests/tracker/run_tracker_parity.py   # tracker vs dump3411's tracker.py
+```
+
+The tracker test needs a dump3411 whose `Tracker` accepts an injected clock.
+
+Firmware, with [ESP-IDF v5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/):
+
+```sh
+. ~/esp/esp-idf/export.sh
+idf.py set-target esp32s3     # once
+idf.py -p /dev/ttyACM0 flash monitor
+```
+
+The S3 runs a decoder self-test at boot, then hops Wi-Fi channels 1-11 and logs one line per tracked drone every 5 s. `idf.py menuconfig` → "dump3411-esp32" sets a fixed channel or the hop dwell time.
+
+For something to receive on the bench, [`tools/rid-transmitter`](./tools/rid-transmitter/README.md) turns an ESP32-C3 into a low-power test transmitter broadcasting a simulated drone on all four Remote ID transports. It needs the OpenDroneID library submodule: clone with `--recurse-submodules`, or run `git submodule update --init`.
 
 ## Relationship to dump3411
 
