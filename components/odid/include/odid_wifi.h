@@ -20,7 +20,8 @@ extern "C" {
 
 typedef enum {
     ODID_WIFI_NONE = 0,
-    ODID_WIFI_BEACON,     /* Beacon vendor IE, OUI FA:0B:BC type 0x0D */
+    ODID_WIFI_BEACON,     /* Beacon vendor IE: OUI FA:0B:BC type 0x0D, or Parrot's
+                             90:3A:E6 carrying a valid Message Pack */
     ODID_WIFI_NAN,        /* NAN Service Discovery Frame with the ODID Service ID */
 } odid_wifi_transport_t;
 
