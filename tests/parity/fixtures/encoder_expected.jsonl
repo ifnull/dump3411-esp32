@@ -1,0 +1,20 @@
+{"hex":"0212313538314635464B443232393430304230334E37000000","expect":{"id_type_raw":1,"ua_type_raw":2,"uas_id":"1581F5FKD229400B03N7"}}
+{"hex":"12265B32FDA7F84E1851C8E9D38E08B1082A08000000000000","expect":{"latitude":40.7828647,"longitude":-73.9653551,"ground_speed":12.50,"vertical_speed":-1.5,"heading":271.0,"height_type":"AGL","altitude_geo":112.5,"height_agl":45.0}}
+{"hex":"320050686F746F677261706879000000000000000000000000","expect":{"description_type":0,"description":"Photography"}}
+{"hex":"420167B84E180E9BE9D3010000000000000059080000000000","expect":{"area_count":1,"area_radius_m":0,"operator_lat":40.7812199,"operator_lon":-73.9665138,"operator_location_type":"live_gnss","alt_takeoff_geo":68.5}}
+{"hex":"520046494E38376173747264676531326B3800000000000000","expect":{"operator_id_type":0,"operator_id":"FIN87astrdge12k8"}}
+{"hex":"0221434153412D5541532D3030343231000000000000000000","expect":{"id_type_raw":2,"ua_type_raw":1,"uas_id":"CASA-UAS-00421"}}
+{"hex":"12212D16145CDDD1EB879F215A0000940C590C000000000000","expect":{"latitude":-33.8567844,"longitude":151.2152967,"ground_speed":80.25,"vertical_speed":10.0,"heading":45.0,"height_type":"Above Takeoff","altitude_geo":610.0,"height_agl":580.5}}
+{"hex":"3200506970656C696E65205375727665790000000000000000","expect":{"description_type":0,"description":"Pipeline Survey"}}
+{"hex":"4200C05FD1EBA0D0205A01000000000000000B080000000000","expect":{"area_count":1,"area_radius_m":0,"operator_lat":-33.8600000,"operator_lon":151.2100000,"operator_location_type":"takeoff","alt_takeoff_geo":29.5}}
+{"hex":"52004155532D4F502D37373831000000000000000000000000","expect":{"operator_id_type":0,"operator_id":"AUS-OP-7781"}}
+{"hex":"024053455353494F4E2D414243000000000000000000000000","expect":{"id_type_raw":4,"ua_type_raw":0,"uas_id":"SESSION-ABC"}}
+{"hex":"12100000000000000000000000000000000000000000000000","expect":{"latitude":0.0000000,"longitude":0.0000000,"ground_speed":0.00,"vertical_speed":0.0,"heading":0.0,"height_type":"Above Takeoff","altitude_geo":null,"height_agl":null}}
+{"hex":"32000000000000000000000000000000000000000000000000","expect":{"description_type":0,"description":""}}
+{"hex":"42020000000000000000010000000000000000000000000000","expect":{"area_count":1,"area_radius_m":0,"operator_lat":0.0000000,"operator_lon":0.0000000,"operator_location_type":"fixed","alt_takeoff_geo":null}}
+{"hex":"52000000000000000000000000000000000000000000000000","expect":{"operator_id_type":0,"operator_id":""}}
+{"hex":"023F303132333435363738394142434445464748494A000000","expect":{"id_type_raw":3,"ua_type_raw":15,"uas_id":"0123456789ABCDEFGHIJ"}}
+{"hex":"1237B3FE84FFE8A435012EB6940000FFFF0100000000000000","expect":{"latitude":89.9999999,"longitude":-179.9999999,"ground_speed":254.25,"vertical_speed":-62.0,"heading":359.0,"height_type":"AGL","altitude_geo":31767.5,"height_agl":-999.5}}
+{"hex":"32014C6F7374206C696E6B2C20525448206163746976650000","expect":{"description_type":1,"description":"Lost link, RTH active"}}
+{"hex":"420101175BCAFFD1496BFF00FF0000000000FFFF0000000000","expect":{"area_count":255,"area_radius_m":2550,"operator_lat":-89.9999999,"operator_lon":179.9999999,"operator_location_type":"live_gnss","alt_takeoff_geo":31767.5}}
+{"hex":"52004F502D49442D5457454E54592D43484152532D58000000","expect":{"operator_id_type":0,"operator_id":"OP-ID-TWENTY-CHARS-X"}}
