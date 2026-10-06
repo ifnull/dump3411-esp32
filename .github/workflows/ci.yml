@@ -26,6 +26,8 @@ jobs:
       - name: Decoder parity
         run: python3 tests/parity/run_parity.py --dump3411 dump3411
       - name: Tracker parity
+        # Runs even if decoder parity failed, so both results show.
+        if: success() || failure()
         run: python3 tests/tracker/run_tracker_parity.py --dump3411 dump3411
 
   layering:
