@@ -48,6 +48,10 @@ Two boards, each owning one radio outright — closer to how dump3411 already ru
 
 Output here is BLE GATT to a companion phone app — works on both iOS and Android, no certification needed. **This repo covers the on-device firmware and the BLE GATT protocol only; the phone app itself is a separate follow-on project.** A phone's own GPS + compass + map supersede adding onboard GPS/compass hardware for bearing/distance display in this mode too. The exception is a dual-radio build that drives its own display instead of (or as well as) a phone — see [Reference build — Seeed XIAO](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path), where an optional GNSS module on the S3 gives the display the unit's own position.
 
+### 5.8 GHz Wi-Fi: required
+
+Remote ID Wi-Fi beacons and NAN also go out on 5 GHz (NAN's 5 GHz discovery channel is 149; beacons follow the drone's own channel), so the detector has to capture 5.8 GHz as well as 2.4 GHz. The ESP32-S3 and ESP32-C3 are 2.4 GHz only. The dual-band ESP32-C5 (XIAO footprint, BLE 5 as well) is the candidate Wi-Fi board, which changes how both build tiers are put together. Details and open points are in [radio notes](./radio-notes.md#58-ghz-wi-fi).
+
 ### Antenna: independent of mode
 
 Onboard-PCB-trace-antenna vs. external-U.FL-antenna is a module/BOM choice at purchase time, not a firmware mode — it applies the same way whether you're building solo or dual-radio. External antenna costs a little more and needs a slightly bigger enclosure, but range matters for a detector, so it's worth it if the unit will spend most of its time outdoors.
@@ -244,7 +248,7 @@ Phase 1 below is identical regardless of which mode you eventually land on — i
 
 1. **Phase 1 (shared) — Wi-Fi-only decode on an ESP32-S3, serial output.** ESP-IDF promiscuous mode + channel hop + Beacon/NAN vendor-IE parsing, shared `odid_parser` module, log decoded messages over USB-CDC serial. Medium effort — mechanical port of `wifi_feeder.py`'s frame-walking logic to C, no radio-contention risk since it's the only radio in play yet.
 
-    **Status: working on a XIAO ESP32-S3.** `components/odid` holds the decoder, the 802.11 Beacon/NAN extraction and a port of dump3411's tracker, all checked against dump3411 (see [Verification](#verification)). The firmware captures with channel hopping, tracks drones and logs a per-drone summary over USB serial, and has been checked over the air against the bench transmitter. A first Wi-Fi + BLE coexistence smoke test is done ([results](../tests/coex/README.md)): a full-time BLE scan stops promiscuous Wi-Fi capture entirely, so solo mode will need explicit radio scheduling. Still to do: written notes on how Sky-Spy and ArduRemoteID set up the radio.
+    **Status: working on a XIAO ESP32-S3.** `components/odid` holds the decoder, the 802.11 Beacon/NAN extraction and a port of dump3411's tracker, all checked against dump3411 (see [Verification](#verification)). The firmware captures with channel hopping, tracks drones and logs a per-drone summary over USB serial, and has been checked over the air against the bench transmitter. A first Wi-Fi + BLE coexistence smoke test is done ([results](../tests/coex/README.md)): a full-time BLE scan stops promiscuous Wi-Fi capture entirely, so solo mode will need explicit radio scheduling. How the radio code compares with Sky-Spy and ArduRemoteID is written up in [radio notes](./radio-notes.md). Phase 1's remaining work is the 5.8 GHz requirement: Wi-Fi capture on a dual-band ESP32-C5.
 
 The bench transmitter in [`tools/rid-transmitter`](../tools/rid-transmitter/README.md) (an ESP32-C3 sending all four transports at once) serves both the Wi-Fi verification and the [open BLE-prevalence question](#open-question-real-world-ble-rid-prevalence) above.
 
