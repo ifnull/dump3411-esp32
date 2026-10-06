@@ -1,4 +1,2 @@
-# XIAO ESP32-S3: 8 MB flash, console on the native USB port.
-CONFIG_IDF_TARGET="esp32s3"
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+# Settings shared by every board. Board-specific ones (target, flash size,
+# console, board choice) are in boards/sdkconfig.<name>.

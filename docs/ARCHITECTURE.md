@@ -87,22 +87,34 @@ The [reference build](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path
 | Layer | Contains | Depends on |
 |---|---|---|
 | **Core** | Wi-Fi promiscuous capture + channel hop, NimBLE GAP scan, `odid_parser`, tracker, the dual-radio UART frame protocol, the BLE GATT peripheral | Nothing board-specific. No `#include` of a display library, no GPIO numbers, no assumption that any given peripheral exists. |
-| **Peripheral drivers** (optional) | eInk display renderer, button input, GNSS receiver, battery fuel gauge, antenna RF switch | Board config, for pin numbers only. Each one individually gated behind its own Kconfig option (`CONFIG_ENABLE_EINK_DISPLAY`, `CONFIG_ENABLE_BUTTONS`, `CONFIG_ENABLE_GNSS`, `CONFIG_ENABLE_FUEL_GAUGE`, `CONFIG_ENABLE_RF_SWITCH`) so it compiles out cleanly when the board doesn't have it. |
-| **Board config** | A `boards/board_<name>.h` per supported board — pin macros and nothing else. No logic. | Nothing. Pure data. |
+| **Peripheral drivers** (optional) | eInk display renderer, button input, GNSS receiver; later a battery fuel gauge and antenna RF switch for boards that have them. Each lives in its own `components/periph_<name>` component. | Board config, for pin numbers only. Each one individually gated behind its own Kconfig option (`CONFIG_DUMP3411_ENABLE_EINK_DISPLAY`, `CONFIG_DUMP3411_ENABLE_BUTTONS`, `CONFIG_DUMP3411_ENABLE_GNSS`; fuel gauge and RF switch options arrive with a board that has them) so it compiles out cleanly when the board doesn't have it. |
+| **Board config** | The `boards` component: a `boards/board_<name>.h` per supported board (`BOARD_NAME` and pin macros, nothing else, no logic), a `boards/sdkconfig.<name>` with that board's settings, and the board choice in `boards/Kconfig`. | Nothing. Pure data. |
 
-**Core never talks to a peripheral driver directly.** It posts detections to a FreeRTOS queue; a peripheral driver task consumes queue items if one exists and is enabled. If it isn't, nothing consumes that queue entry and core keeps running exactly the same — this is what makes eink genuinely optional rather than optional-in-name-only: with `CONFIG_ENABLE_EINK_DISPLAY` off, output just stays on the serial-log consumer that Phase 1 already establishes as the baseline. Same pattern covers the FeatherS3[D]-specific fuel gauge and RF switch — a board without either just doesn't enable those Kconfig options, and the core loop never knows the difference.
+How it's wired in the build:
+
+- **Choosing a board.** `idf.py -D BOARD=<name>` loads `boards/sdkconfig.<name>`, which sets the target, flash size, console and the Kconfig board choice. Use one build directory per board (`-B build-<name>`). With no `BOARD`, the build uses `generic`.
+- **Capabilities.** The board choice `select`s what the board can carry (`CONFIG_DUMP3411_BOARD_HAS_EINK`, `_HAS_BUTTONS`, `_HAS_GNSS`). A peripheral option `depends on` its capability, so it can't be switched on for a board that lacks it. `sdkconfig.h` is the generated header for all of these, so nothing is written down twice.
+- **Pins.** Code includes `board.h`, never a `board_<name>.h`. `board.h` includes the selected header through a define the `boards` component's CMake sets, so there is no list of boards in C. It also checks the header against Kconfig in both directions, and fails the build if either is wrong:
+  - an enabled peripheral needs its pin macros;
+  - a header must not define pins for a capability its Kconfig entry doesn't declare.
+
+  Pins for anything a board doesn't have stay undefined, so code that uses them doesn't compile.
+- **`generic`** is the always-present baseline: any ESP32-S3, default flash size and console, no pins, no peripherals.
+
+**Core never talks to a peripheral driver directly.** Core here means `components/odid` and the capture code (`main/wifi_capture.*`); `tools/check_layering.sh`, run in CI, fails if any of it includes `board.h`, a `board_<name>.h` or a `periph_*` header. It posts detections to a FreeRTOS queue; a peripheral driver task consumes queue items if one exists and is enabled. If it isn't, nothing consumes that queue entry and core keeps running exactly the same — this is what makes eink genuinely optional rather than optional-in-name-only: with `CONFIG_ENABLE_EINK_DISPLAY` off, output just stays on the serial-log consumer that Phase 1 already establishes as the baseline. Same pattern covers the FeatherS3[D]-specific fuel gauge and RF switch — a board without either just doesn't enable those Kconfig options, and the core loop never knows the difference.
 
 A review rule worth holding the line on: if adding a board ever requires touching `odid_parser`, the tracker, or the Wi-Fi/BLE scan code, that's a sign the abstraction has leaked and needs fixing before the board gets merged — not a sign the board is unusual.
 
 ### Adding support for a new board
 
-For contributors bringing up a different ESP32-S3 board:
+For contributors bringing up a different board:
 
-1. **Add `boards/board_<name>.h`** defining only the pin macros the peripheral drivers you're enabling actually need (SPI pins for a display, button GPIOs, fuel-gauge I2C bus/address, RF switch GPIO). Leave the macros for anything the board doesn't have undefined — that's what keeps the corresponding Kconfig option un-selectable rather than silently compiling against a pin that doesn't exist.
-2. **Add the board to the Kconfig board-choice menu**, selecting your header and setting sensible `CONFIG_ENABLE_*` defaults for whatever the board actually ships with. Anything can still be toggled at `menuconfig` time.
-3. **If the display uses a different driver chip** (not everyone's e-ink panel is an SSD1680), add that driver behind the same renderer interface core already posts to — the queue consumer contract is display-agnostic by design.
-4. **Don't touch core.** If the board bring-up is scoped correctly, the diff should be entirely new files (`boards/board_<name>.h`, possibly a new peripheral driver) plus a Kconfig entry.
-5. **Verify with the existing Phase 1 check** — decoded Wi-Fi/BLE messages over serial should match a known transmitter's broadcast exactly as on any other board, since core logic is untouched. Only the peripheral behavior (does the display render, do the buttons respond) is genuinely board-specific and needs its own bring-up testing.
+1. **Add `boards/board_<name>.h`** with `BOARD_NAME` and only the pin macros for the peripherals the board actually has (e.g. `BOARD_EPD_PIN_*`, `BOARD_BUTTON_*`, `BOARD_GNSS_UART_*`). Leave the macros for anything the board doesn't have undefined.
+2. **Add `boards/sdkconfig.<name>`** setting `CONFIG_IDF_TARGET`, the flash size and console if they differ from the defaults, and `CONFIG_DUMP3411_BOARD_<NAME>=y`.
+3. **Add the board to the choice in `boards/Kconfig`**, with a `DUMP3411_BOARD_NAME` default matching the file names and a `select` for each capability it has (`DUMP3411_BOARD_HAS_*`). `board.h` fails the build if these and the header disagree. Peripheral options can still be toggled in `menuconfig`.
+4. **If the display uses a different driver chip** (not everyone's e-ink panel is an SSD1680), add that driver behind the same renderer interface core already posts to — the queue consumer contract is display-agnostic by design.
+5. **Don't touch core.** If the board bring-up is scoped correctly, the diff should be entirely new files (`boards/board_<name>.h`, `boards/sdkconfig.<name>`, possibly a new peripheral driver) plus a Kconfig entry. CI finds the new header by its name, builds the board, and runs the layering check.
+6. **Verify with the existing Phase 1 check** — decoded Wi-Fi/BLE messages over serial should match a known transmitter's broadcast exactly as on any other board, since core logic is untouched. Only the peripheral behavior (does the display render, do the buttons respond) is genuinely board-specific and needs its own bring-up testing.
 
 ## Hardware / BOM
 

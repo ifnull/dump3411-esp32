@@ -1,0 +1,4 @@
+# Generic ESP32-S3: default flash size and console, so it runs on any S3
+# board (logs also go to the native USB port where there is one).
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_DUMP3411_BOARD_GENERIC=y

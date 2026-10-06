@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # dump3411 is the parity oracle. The tests need a dump3411 with an
+  # injectable Tracker clock and Parrot beacon support.
+  DUMP3411_REF: main
+
+jobs:
+  host-tests:
+    name: Parity tests vs dump3411
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ifnull/dump3411
+          ref: ${{ env.DUMP3411_REF }}
+          path: dump3411
+      - name: Build host tools (ASan/UBSan)
+        run: cmake -S host -B build-host && cmake --build build-host
+      - name: Decoder parity
+        run: python3 tests/parity/run_parity.py --dump3411 dump3411
+      - name: Tracker parity
+        run: python3 tests/tracker/run_tracker_parity.py --dump3411 dump3411
+
+  layering:
+    name: Core/board layering
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: tools/check_layering.sh
+
+  boards:
+    name: Discover boards
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        # Every boards/board_<name>.h is a board to build; no hand-kept list.
+        run: |
+          list=$(ls boards/board_*.h | sed -E 's#boards/board_(.*)\.h#\1#' | jq -R . | jq -sc .)
+          echo "boards: $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+  firmware:
+    name: Firmware (${{ matrix.board }})
+    needs: boards
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.5
+    strategy:
+      fail-fast: false
+      matrix:
+        board: ${{ fromJson(needs.boards.outputs.list) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh"
+          test -f "boards/sdkconfig.${{ matrix.board }}" || { echo "boards/board_${{ matrix.board }}.h has no boards/sdkconfig.${{ matrix.board }}"; exit 1; }
+          idf.py -B "build-${{ matrix.board }}" -D BOARD="${{ matrix.board }}" build
+      - name: Generic board has every peripheral off
+        if: matrix.board == 'generic'
+        run: |
+          if grep -E '^CONFIG_DUMP3411_ENABLE_[A-Z_]+=y' build-generic/sdkconfig; then
+            echo "the generic board must not enable peripherals"; exit 1
+          fi
+
+  tools:
+    name: Bench transmitter and coexistence test
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.5
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Build
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh"
+          (cd tools/rid-transmitter && idf.py build)
+          (cd tests/coex && idf.py build)

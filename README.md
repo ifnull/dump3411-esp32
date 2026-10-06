@@ -48,17 +48,18 @@ python3 tests/parity/run_parity.py            # decoder vs dump3411, and vs the 
 python3 tests/tracker/run_tracker_parity.py   # tracker vs dump3411's tracker.py
 ```
 
-The tracker test needs a dump3411 whose `Tracker` accepts an injected clock.
+The tracker test needs a dump3411 whose `Tracker` accepts an injected clock. `tools/check_layering.sh` checks that core code includes no board or peripheral-driver header. CI (`.github/workflows/ci.yml`) runs all of these on every pull request, builds the firmware for every board in `boards/`, and builds the bench transmitter and the coexistence test.
 
 Firmware, with [ESP-IDF v5.5](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/):
 
 ```sh
 . ~/esp/esp-idf/export.sh
-idf.py set-target esp32s3     # once
-idf.py -p /dev/ttyACM0 flash monitor
+idf.py -B build-xiao_esp32s3 -D BOARD=xiao_esp32s3 -p /dev/ttyACM0 flash monitor
 ```
 
-The S3 runs a decoder self-test at boot, then hops Wi-Fi channels 1-11 and logs one line per tracked drone every 5 s. `idf.py menuconfig` → "dump3411-esp32" sets a fixed channel or the hop dwell time.
+`BOARD` picks the hardware, one build directory per board. `generic` (the default) runs on any ESP32-S3 with no peripherals; `xiao_esp32s3` is the reference build. Each board is a settings file `boards/sdkconfig.<name>` plus a pin header `boards/board_<name>.h`; see [adding support for a new board](./docs/ARCHITECTURE.md#adding-support-for-a-new-board).
+
+The S3 reports its board and enabled peripherals and runs a decoder self-test at boot, then hops Wi-Fi channels 1-11 and logs one line per tracked drone every 5 s. `idf.py menuconfig` → "dump3411-esp32" sets a fixed channel or the hop dwell time.
 
 For something to receive on the bench, [`tools/rid-transmitter`](./tools/rid-transmitter/README.md) turns an ESP32-C3 into a low-power test transmitter broadcasting a simulated drone on all four Remote ID transports. It needs the OpenDroneID library submodule: clone with `--recurse-submodules`, or run `git submodule update --init`.
 

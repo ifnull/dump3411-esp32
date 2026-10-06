@@ -1,0 +1,61 @@
+menu "Board"
+
+    choice DUMP3411_BOARD
+        prompt "Board"
+        default DUMP3411_BOARD_GENERIC
+        help
+            The hardware to build for. Usually set by building with
+            -D BOARD=<name>, which loads boards/sdkconfig.<name>.
+
+        config DUMP3411_BOARD_GENERIC
+            bool "Generic ESP32-S3 (no peripherals)"
+            help
+                Any ESP32-S3 board. Wi-Fi capture and serial output only.
+
+        config DUMP3411_BOARD_XIAO_ESP32S3
+            bool "Seeed XIAO ESP32-S3 + ePaper driver board"
+            select DUMP3411_BOARD_HAS_EINK
+            select DUMP3411_BOARD_HAS_BUTTONS
+            select DUMP3411_BOARD_HAS_GNSS
+            help
+                The reference build: XIAO ESP32-S3 in Seeed's ePaper driver
+                board with the 2.9" mono panel, three buttons, and an
+                optional L76K GNSS module.
+    endchoice
+
+    config DUMP3411_BOARD_NAME
+        string
+        default "generic" if DUMP3411_BOARD_GENERIC
+        default "xiao_esp32s3" if DUMP3411_BOARD_XIAO_ESP32S3
+
+    # What the chosen board can carry. Selected by the board choice above,
+    # never set by hand; boards/board.h checks the pins match.
+    config DUMP3411_BOARD_HAS_EINK
+        bool
+    config DUMP3411_BOARD_HAS_BUTTONS
+        bool
+    config DUMP3411_BOARD_HAS_GNSS
+        bool
+
+    menu "Peripherals"
+
+        config DUMP3411_ENABLE_EINK_DISPLAY
+            bool "E-ink display"
+            depends on DUMP3411_BOARD_HAS_EINK
+            default y
+
+        config DUMP3411_ENABLE_BUTTONS
+            bool "Buttons"
+            depends on DUMP3411_BOARD_HAS_BUTTONS
+            default y
+
+        config DUMP3411_ENABLE_GNSS
+            bool "GNSS receiver"
+            depends on DUMP3411_BOARD_HAS_GNSS
+            default n
+            help
+                Off by default: the GNSS module is an optional add-on.
+
+    endmenu
+
+endmenu
