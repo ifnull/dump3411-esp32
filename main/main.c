@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
+#include "board.h"
 #include "selftest.h"
 #include "wifi_capture.h"
 
@@ -26,6 +27,30 @@ void app_main(void)
     ESP_LOGI(TAG, "dump3411-esp32 on %s rev %d.%d, %d cores, MAC %02x:%02x:%02x:%02x:%02x:%02x",
              CONFIG_IDF_TARGET, chip.revision / 100, chip.revision % 100, chip.cores,
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    ESP_LOGI(TAG, "board: %s; peripherals:%s%s%s%s", BOARD_NAME,
+#ifdef CONFIG_DUMP3411_ENABLE_EINK_DISPLAY
+             " e-ink",
+#else
+             "",
+#endif
+#ifdef CONFIG_DUMP3411_ENABLE_BUTTONS
+             " buttons",
+#else
+             "",
+#endif
+#ifdef CONFIG_DUMP3411_ENABLE_GNSS
+             " gnss",
+#else
+             "",
+#endif
+#if defined(CONFIG_DUMP3411_ENABLE_EINK_DISPLAY) || defined(CONFIG_DUMP3411_ENABLE_BUTTONS) || \
+    defined(CONFIG_DUMP3411_ENABLE_GNSS)
+             " (enabled in config; drivers not written yet)"
+#else
+             " none"
+#endif
+    );
 
     if (odid_selftest()) {
         ESP_LOGI(TAG, "decoder self-test passed");
