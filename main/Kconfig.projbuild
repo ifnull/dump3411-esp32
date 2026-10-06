@@ -1,0 +1,19 @@
+menu "dump3411-esp32"
+
+    config DUMP3411_WIFI_CHANNEL
+        int "Wi-Fi channel to monitor (0 = hop 1-11)"
+        range 0 13
+        default 0
+        help
+            Like dump3411's --channel: a fixed channel gives full dwell time
+            on a transmitter whose channel you know, at the cost of missing
+            the others.
+
+    config DUMP3411_HOP_DWELL_MS
+        int "Channel hop dwell time (ms)"
+        range 50 2000
+        default 200
+        help
+            Same default as dump3411's --channel-dwell.
+
+endmenu

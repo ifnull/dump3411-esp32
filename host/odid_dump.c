@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "json_out.h"
 #include "odid_parser.h"
 #include "odid_wifi.h"
 
@@ -26,25 +27,6 @@ static void put_hex(const uint8_t *b, size_t n)
     putchar('"');
     for (size_t i = 0; i < n; i++) {
         printf("%02X", b[i]);
-    }
-    putchar('"');
-}
-
-/* bytes.decode('ascii', errors='replace'), then JSON-escaped. */
-static void put_ascii(const uint8_t *b, size_t n)
-{
-    putchar('"');
-    for (size_t i = 0; i < n; i++) {
-        uint8_t c = b[i];
-        if (c >= 0x80) {
-            fputs("\\ufffd", stdout);
-        } else if (c == '"' || c == '\\') {
-            printf("\\%c", c);
-        } else if (c < 0x20 || c == 0x7F) {
-            printf("\\u%04x", c);
-        } else {
-            putchar(c);
-        }
     }
     putchar('"');
 }
@@ -72,7 +54,7 @@ static void put_fields(const odid_msg_t *m)
         fputs(",\"ua_type\":", stdout);
         put_name(odid_ua_type_name(b->ua_type), "Unknown(%u)", b->ua_type);
         printf(",\"id_type_raw\":%u,\"ua_type_raw\":%u,\"uas_id\":", b->id_type, b->ua_type);
-        put_ascii(b->uas_id, b->uas_id_len);
+        json_ascii(b->uas_id, b->uas_id_len);
         break;
     }
     case ODID_MSG_LOCATION: {
@@ -92,7 +74,7 @@ static void put_fields(const odid_msg_t *m)
     case ODID_MSG_SELF_ID: {
         const odid_self_id_t *s = &m->u.self_id;
         printf(",\"description_type\":%u,\"description\":", s->description_type);
-        put_ascii(s->description, s->description_len);
+        json_ascii(s->description, s->description_len);
         break;
     }
     case ODID_MSG_SYSTEM: {
@@ -111,7 +93,7 @@ static void put_fields(const odid_msg_t *m)
     case ODID_MSG_OPERATOR_ID: {
         const odid_operator_id_t *o = &m->u.operator_id;
         printf(",\"operator_id_type\":%u,\"operator_id\":", o->operator_id_type);
-        put_ascii(o->operator_id, o->operator_id_len);
+        json_ascii(o->operator_id, o->operator_id_len);
         break;
     }
     default:

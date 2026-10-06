@@ -20,7 +20,7 @@ if(ODID_SANITIZE)
     add_link_options(-fsanitize=address,undefined)
 endif()
 
-add_library(odid STATIC ${ODID_DIR}/odid_parser.c ${ODID_DIR}/odid_wifi.c)
+add_library(odid STATIC ${ODID_DIR}/odid_parser.c ${ODID_DIR}/odid_wifi.c ${ODID_DIR}/odid_tracker.c)
 target_include_directories(odid PUBLIC ${ODID_DIR}/include)
 target_compile_options(odid PRIVATE ${ODID_WARNINGS})
 target_link_libraries(odid PUBLIC m)
@@ -29,6 +29,11 @@ target_link_libraries(odid PUBLIC m)
 add_executable(odid_dump odid_dump.c)
 target_compile_options(odid_dump PRIVATE ${ODID_WARNINGS})
 target_link_libraries(odid_dump PRIVATE odid)
+
+# Timed script in, snapshots out: the C side of the tracker comparison.
+add_executable(tracker_sim tracker_sim.c)
+target_compile_options(tracker_sim PRIVATE ${ODID_WARNINGS})
+target_link_libraries(tracker_sim PRIVATE odid)
 
 # Regenerates tests/parity/fixtures/encoder.txt from the OpenDroneID reference
 # encoder (the library ArduRemoteID transmits with). Off by default because it
