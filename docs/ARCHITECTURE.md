@@ -244,7 +244,7 @@ Phase 1 below is identical regardless of which mode you eventually land on — i
 
 1. **Phase 1 (shared) — Wi-Fi-only decode on an ESP32-S3, serial output.** ESP-IDF promiscuous mode + channel hop + Beacon/NAN vendor-IE parsing, shared `odid_parser` module, log decoded messages over USB-CDC serial. Medium effort — mechanical port of `wifi_feeder.py`'s frame-walking logic to C, no radio-contention risk since it's the only radio in play yet.
 
-    **Status: working on a XIAO ESP32-S3.** `components/odid` holds the decoder, the 802.11 Beacon/NAN extraction and a port of dump3411's tracker, all checked against dump3411 (see [Verification](#verification)). The firmware captures with channel hopping, tracks drones and logs a per-drone summary over USB serial, and has been checked over the air against the bench transmitter. Still to do: written notes on how Sky-Spy and ArduRemoteID set up the radio, and a short Wi-Fi + BLE coexistence smoke test on the S3 as an early data point for Phase S2.
+    **Status: working on a XIAO ESP32-S3.** `components/odid` holds the decoder, the 802.11 Beacon/NAN extraction and a port of dump3411's tracker, all checked against dump3411 (see [Verification](#verification)). The firmware captures with channel hopping, tracks drones and logs a per-drone summary over USB serial, and has been checked over the air against the bench transmitter. A first Wi-Fi + BLE coexistence smoke test is done ([results](../tests/coex/README.md)): a full-time BLE scan stops promiscuous Wi-Fi capture entirely, so solo mode will need explicit radio scheduling. Still to do: written notes on how Sky-Spy and ArduRemoteID set up the radio.
 
 The bench transmitter in [`tools/rid-transmitter`](../tools/rid-transmitter/README.md) (an ESP32-C3 sending all four transports at once) serves both the Wi-Fi verification and the [open BLE-prevalence question](#open-question-real-world-ble-rid-prevalence) above.
 
@@ -252,7 +252,7 @@ Once Phase 1 works, fork based on which mode you're building:
 
 **Solo path:**
 
-2. **Phase S2 — Add BLE scan on the same S3 chip.** This is where the coexistence question actually gets tested — measure Wi-Fi and BLE RID capture rate with both active vs. each running alone, with and without core-pinning, before deciding solo mode is good enough.
+2. **Phase S2 — Add BLE scan on the same S3 chip.** This is where the coexistence question actually gets tested — measure Wi-Fi and BLE RID capture rate with both active vs. each running alone, with and without core-pinning, before deciding solo mode is good enough. The Phase 1 smoke test ([results](../tests/coex/README.md)) already shows that a continuous BLE scan leaves promiscuous Wi-Fi no airtime, so S2 is about choosing a radio schedule (BLE scan duty cycle, or alternating Wi-Fi and BLE periods) and measuring time to first detection under it.
 3. **Phase S3 — Add output.** No-solder display and/or USB-serial-to-Android, per what you decide to build.
 4. **Phase S4 — Battery bring-up.**
 

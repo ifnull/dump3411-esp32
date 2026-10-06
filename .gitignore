@@ -1,6 +1,7 @@
 # ESP-IDF / PlatformIO build artifacts
 build/
 build-host/
+build-*/
 .pio/
 .pioenvs/
 .piolibdeps/
