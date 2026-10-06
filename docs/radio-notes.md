@@ -13,7 +13,8 @@ Why this project's radio code is built the way it is, and how it compares with t
   - A drone beaconing once a second on one channel is heard about once per 2.2 s hop cycle in the best case. Against the bench transmitter that worked out to one or two frames every few seconds.
 - **Accepted beacon elements.**
   - ASTM: OUI `FA:0B:BC`, type `0x0D`.
-  - Parrot: OUI `90:3A:E6`, used by Parrot and the French Direct Remote ID scheme. Only accepted when a structurally valid Message Pack follows, because Parrot uses the OUI for unrelated elements and the type byte's value isn't documented.
+  - Parrot: OUI `90:3A:E6`, with the same layout as the ASTM element. Only accepted when a structurally valid Message Pack follows, because Parrot uses the OUI for unrelated elements and the type byte's value isn't documented. The layout comes from how Sky-Spy decodes it; no capture from a Parrot drone has confirmed it yet.
+  - Not yet: French Direct Remote ID beacons use their own OUI (`6A:5C:35`, type `0x01`) and a TLV payload (French ID, serial, position, altitude, takeoff point, speed, heading), not an ODID Message Pack. See opendroneid-core-c's `frdid_wifi_build_beacon_frame`. Decoding them is separate work, starting in dump3411.
   - Both carry a one-byte send counter before the message.
 - **RSSI** comes from `rx_ctrl.rssi`; no radiotap header is involved on the ESP32.
 
