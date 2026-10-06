@@ -12,7 +12,7 @@ It is **not** a literal port. The Python codebase's radio-integration layer (Blu
 
 ## Two build tiers
 
-No hardware has been ordered yet, so this project targets two modes rather than one fixed design — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#operating-modes) for the full writeup:
+This project targets two modes rather than one fixed design — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#operating-modes) for the full writeup:
 
 - **Solo mode** — one ESP32-S3 does both Wi-Fi and BLE scanning, time-sliced on its single radio. Cheapest entry point (no second board), but this is the budget tier: sustained concurrent Wi-Fi+BLE capture on one radio has no known-good precedent, so reliability has to be bench-measured, not assumed. Output is a no-solder display and/or a USB-serial tether to Android (not BLE — that radio's already busy).
 - **Dual-radio mode** — a second ESP32-C3 owns BLE outright (RID scan + a BLE GATT peripheral for phone connectivity), while the ESP32-S3 does nothing but Wi-Fi. Closer to how dump3411 already runs two independent radios on the Pi, and the mode with no open coexistence question. Output is BLE GATT to a companion phone app (iOS + Android).
@@ -24,6 +24,8 @@ There's no onboard Wi-Fi dashboard, GPS, or compass by design in dual-radio mode
 ## Hardware
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#hardware--bom) for the full BOM per mode. Solo mode: one ESP32-S3 dev board + battery. Dual-radio mode: adds an ESP32-C3 board wired to the S3 over UART.
+
+The reference hardware is the [Seeed XIAO build](./docs/ARCHITECTURE.md#reference-build--seeed-xiao-solo--dual-radio-upgrade-path): a XIAO ESP32-S3 in Seeed's ePaper driver board with a 2.9" mono e-ink panel, an optional L76K GNSS module, and a XIAO ESP32-C3 that takes over the socket for dual-radio mode. Any ESP32-S3 board can run the firmware; see [adding support for a new board](./docs/ARCHITECTURE.md#adding-support-for-a-new-board).
 
 ## Roadmap
 

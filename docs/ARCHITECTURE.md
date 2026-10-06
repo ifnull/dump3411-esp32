@@ -6,7 +6,7 @@ dump3411 is a pure-Python (3.10+) Remote ID drone detector built for a Raspberry
 
 No SDR/DSP is involved anywhere in dump3411's code — both radio paths receive already-demodulated frames from the host's radio hardware and do byte/bitfield parsing on top. That's the good news for portability: the *algorithm* is small and simple. The bad news is that essentially the entire "wire it up to the OS" layer — BlueZ/D-Bus, `AF_PACKET` raw sockets, `iw`/NetworkManager/`rfkill` shell-outs, systemd/journald, `sqlite3`-on-a-real-filesystem — is Linux-specific and has no equivalent in an RTOS/bare-metal target. **This is a from-scratch C/C++ rewrite against ESP-IDF, not a literal port of the Python.** The parsing logic itself (Basic ID/Location/System/Operator ID/Self-ID message decoding in dump3411's `ble_feeder.py` and `wifi_feeder.py`) transfers almost mechanically, and can finally be de-duplicated into a single shared decoder — something dump3411's own `TODO.md` already flags as wanted for the Python side too.
 
-No hardware has been ordered yet, so this doc documents **two build tiers** rather than committing to one fixed design — pick based on budget and how much detection reliability matters, or start with the shared groundwork and decide later.
+This doc documents **two build tiers** rather than committing to one fixed design — pick based on budget and how much detection reliability matters, or start with the shared groundwork and decide later. The reference hardware is the [Seeed XIAO build](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path), which covers both tiers with the same parts.
 
 ## Open question: real-world BLE RID prevalence
 
@@ -44,7 +44,7 @@ Two boards, each owning one radio outright — closer to how dump3411 already ru
 - **Wi-Fi sensor board** (ESP32-S3) — promiscuous-mode capture, channel hop, Wi-Fi Beacon/NAN RID decode. Does nothing else; no radio contention.
 - **BLE + coordinator board** (ESP32-C3) — BLE RID scan, merges in the S3's detections over UART, and runs a BLE GATT peripheral so a phone can pull live detections without ever touching the busy Wi-Fi radio. Concurrent BLE scan + GATT peripheral is a standard NimBLE multi-role pattern (still worth a bench check, but a well-trodden one, unlike Wi-Fi/BLE coexistence).
 
-Output here is BLE GATT to a companion phone app — works on both iOS and Android, no certification needed. **This repo covers the on-device firmware and the BLE GATT protocol only; the phone app itself is a separate follow-on project.** A phone's own GPS + compass + map supersede adding onboard GPS/compass hardware for bearing/distance display in this mode too. The exception is a dual-radio build that drives its own display instead of (or as well as) a phone — see [Alternative build — Seeed XIAO](#alternative-build--seeed-xiao-solo--dual-radio-upgrade-path), where an optional GNSS module on the S3 gives the display the unit's own position.
+Output here is BLE GATT to a companion phone app — works on both iOS and Android, no certification needed. **This repo covers the on-device firmware and the BLE GATT protocol only; the phone app itself is a separate follow-on project.** A phone's own GPS + compass + map supersede adding onboard GPS/compass hardware for bearing/distance display in this mode too. The exception is a dual-radio build that drives its own display instead of (or as well as) a phone — see [Reference build — Seeed XIAO](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path), where an optional GNSS module on the S3 gives the display the unit's own position.
 
 ### Antenna: independent of mode
 
@@ -74,7 +74,7 @@ Regardless of mode, both share the same core logic:
 
 ## Portability / board abstraction
 
-The [Selected build](#selected-build--external-antenna-e-ink-solo-mode) below commits to specific parts (FeatherS3[D], eInk FeatherWing) as the reference hardware, but nothing about detection itself should depend on that choice — a contributor with a bare devkit and no display should be able to build and run this with zero code changes beyond a board config file. That only holds if the layering below is kept strict as new peripheral support gets added.
+The [reference build](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path) below commits to specific parts (XIAO ESP32-S3 and ESP32-C3, Seeed ePaper driver board) as the reference hardware, but nothing about detection itself should depend on that choice — a contributor with a bare devkit and no display should be able to build and run this with zero code changes beyond a board config file. That only holds if the layering below is kept strict as new peripheral support gets added.
 
 ### Three layers, one direction of dependency
 
@@ -109,9 +109,9 @@ For contributors bringing up a different ESP32-S3 board:
 - Enclosure. ~$5-15.
 - **Rough total: ~$20-45** depending on whether the display is included.
 
-#### Selected build — external-antenna, e-ink (Solo mode)
+#### FeatherS3[D] build — external-antenna, e-ink (Solo mode)
 
-Concrete parts chosen after evaluating fixed-battery/onboard-antenna boards (M5StickS3, M5Stack CoreS3 + stacked battery module) against a build-your-own Feather stack. The Feather stack wins because it's the only combination that gets external antenna, no-solder e-ink, and a standard battery connector all at once — see the design discussion this list came out of for the rejected alternatives and why.
+The first concrete parts list, and still a supported option; the hardware actually built and tested against is the [Seeed XIAO build](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path) below. Concrete parts chosen after evaluating fixed-battery/onboard-antenna boards (M5StickS3, M5Stack CoreS3 + stacked battery module) against a build-your-own Feather stack. The Feather stack wins because it's the only combination that gets external antenna, no-solder e-ink, and a standard battery connector all at once — see the design discussion this list came out of for the rejected alternatives and why.
 
 | Role | Part | Price |
 |---|---|---|
@@ -142,9 +142,9 @@ Concrete parts chosen after evaluating fixed-battery/onboard-antenna boards (M5S
 - Enclosure housing both boards + battery. ~$5-15.
 - **Rough total: ~$35-60.**
 
-### Alternative build — Seeed XIAO (solo → dual-radio upgrade path)
+### Reference build — Seeed XIAO (solo → dual-radio upgrade path)
 
-An all-Seeed alternative to the [FeatherS3\[D\] build](#selected-build--external-antenna-e-ink-solo-mode) whose main advantage is that **the same display hardware serves both modes**: start solo with an S3 in the display board's socket, and if Phase S2 shows coexistence hurts capture (or BLE RID turns out to matter), pull the S3 out to become the dedicated Wi-Fi board and drop a C3 into the socket. Going dual-radio costs one extra ~$5 board, not a redesign.
+The hardware this project is built and tested on. An all-Seeed alternative to the [FeatherS3\[D\] build](#feathers3d-build--external-antenna-e-ink-solo-mode) whose main advantage is that **the same display hardware serves both modes**: start solo with an S3 in the display board's socket, and if Phase S2 shows coexistence hurts capture (or BLE RID turns out to matter), pull the S3 out to become the dedicated Wi-Fi board and drop a C3 into the socket. Going dual-radio costs one extra ~$5 board, not a redesign.
 
 | Role | Part | Notes |
 |---|---|---|
@@ -152,9 +152,9 @@ An all-Seeed alternative to the [FeatherS3\[D\] build](#selected-build--external
 | E-ink panel | [Seeed 2.9" Monochrome ePaper, 296×128](https://www.seeedstudio.com/2-9-Monochrome-ePaper-Display-with-296x128-Pixels-p-5782.html) | Same resolution as the FeatherWing build, so the UI layout carries over. Mono, not tri/quad-color (those refresh far too slowly for a live list). Confirm its controller chip and partial-refresh support before writing the renderer. |
 | Wi-Fi board (solo: the only board) | XIAO ESP32-S3 | u.FL + included antenna, dual-core, 8MB PSRAM. |
 | BLE + coordinator (dual-radio only) | XIAO ESP32-C3 | u.FL + included antenna. Lives in the driver board socket in dual-radio mode. |
-| GNSS (optional) | [L76K GNSS Module for XIAO](https://wiki.seeedstudio.com/get_start_l76k_gnss/) | Stacks onto the S3 with header sockets; UART on D6/D7 (also touches D0/D2 for its LED/control lines). Active u.FL GNSS antenna included. ~41 mA tracking. Doesn't obstruct the S3's u.FL connector. |
-| Buttons | 3× panel-mount momentary tactile switches | Wired pin → GND, internal pull-ups, software debounce. One button (short = next page, long = select) is enough if pins get tight. |
-| Battery | Single-cell 3.7V LiPo, 1000-1500 mAh | Check the connector matches the driver board's JST 2-pin — the FeatherS3[D] build's Adafruit JST-PH cell may need a re-pinned lead. |
+| GNSS (optional) | [L76K GNSS Module for XIAO](https://wiki.seeedstudio.com/get_start_l76k_gnss/) | Stacks onto the S3 with header sockets; UART on D6/D7, 9600 baud NMEA, 3.3 V. Its D0/D2 pads are control inputs Seeed's example drives high. Active u.FL GNSS antenna included. ~41 mA tracking. Doesn't obstruct the S3's u.FL connector. |
+| Buttons | 3× 7 mm panel-mount momentary switches (PBS-110 style; not the self-locking kind) | Wired pin → GND, internal pull-ups, software debounce. One button (short = next page, long = select) is enough if pins get tight. 12 mm metal buttons are too deep for a 20 mm case. 6×6 mm tactile switches for breadboard work. |
+| Battery | Single-cell 3.7V LiPo, 1000-1500 mAh, JST-PH 2.0 mm, with protection circuit (e.g. EEMB 603449, 1100 mAh, 34.5 × 51 × 6.3 mm) | The driver board's BAT connector is JST 2.0 mm. Polarity isn't standard across LiPo sellers: check the red lead against the board's + marking before plugging in, and swap the crimps if needed. |
 
 #### Pin budget
 
@@ -162,7 +162,7 @@ XIAO pin labels (`D0`-`D10`) are the same across the S3 and C3, but they map to 
 
 | Stage | Board | Display (driver board) | Buttons | UART | Other |
 |---|---|---|---|---|---|
-| Solo | S3 in socket | D0 RST, D1 CS, D2 BUSY, D3 DC, D8 SCK, D10 MOSI | D4 (GPIO5), D5 (GPIO6), D9 (GPIO8) | D6/D7 → L76K (optional, jumper-wired — can't stack while the S3 is in the socket; wire only TX/RX/3V3/GND, leave the L76K's D0/D2 lines unconnected since the display owns those pins) | — |
+| Solo | S3 in socket | D0 RST, D1 CS, D2 BUSY, D3 DC, D8 SCK, D10 MOSI | D4 (GPIO5), D5 (GPIO6), D9 (GPIO8) | D6/D7 → L76K (optional, jumper-wired — can't stack while the S3 is in the socket; wire TX/RX/3V3/GND like-to-like, and tie the L76K's D0/D2 pads to 3V3: stacked, the XIAO would hold them high, but here the display owns the S3's D0/D2) | — |
 | Dual | C3 in socket | same as above | D4 (GPIO6), D5 (GPIO7), D9 (GPIO9) | D6 (GPIO21) TX / D7 (GPIO20) RX → S3 link | D9/GPIO9 is the C3's boot strap: holding that button at power-on enters download mode. Harmless, but put the least-used function on it. |
 | Dual | S3 (off-board, L76K stacked) | — | — | D6/D7 → L76K; D4 (GPIO5) TX / D5 (GPIO6) RX → C3 link | D0/D2 reserved by the L76K. The S3's GPIO matrix lets the link use any free pins; D8/D9 work equally well. |
 
@@ -210,12 +210,14 @@ Wiring notes:
 - **Common ground is mandatory** for the UART link, even though both boards share the battery negative — run it as its own wire alongside TX/RX.
 - **Antenna placement:** keep the GNSS antenna at the top of the enclosure facing the sky, and physically separated from the two 2.4 GHz whips.
 
-#### To verify before ordering / on arrival
+#### Checked on arrival
 
-- The driver board's extension header actually breaks out D4, D5 and D9 (otherwise solder to the XIAO's pins directly).
-- The XIAO sits in female sockets on the driver board rather than being soldered — the whole upgrade path depends on it.
-- The L76K passes XIAO pins through on top when stacked. If not, solder the C3-link wires (D4/D5, plus GND and battery) to the S3 before stacking.
-- The 2.9" panel's controller chip and partial-refresh support.
+Parts on hand: XIAO ESP32-S3, XIAO ESP32-C3, two Seeed 2.4 GHz FPC u.FL antennas, the ePaper driver board, the 2.9" mono panel, and the L76K with its active patch antenna. Battery and buttons come from elsewhere (see the table above). Neither XIAO nor the L76K ships with pin headers.
+
+- **Confirmed:** the XIAO sits in female sockets (CN1/CN2) on the driver board, so the solo-to-dual socket swap works.
+- **Still to check:** whether the two rows of 7 holes beside the sockets carry the socket pins (continuity meter). If they do, they're where buttons and the L76K attach in the pocket build; if not, wire to the S3's header pins.
+- **Still to check:** whether the L76K passes XIAO pins through on top when stacked. If not, solder the C3-link wires (D4/D5, plus GND and battery) to the S3 before stacking.
+- **Still to check:** the 2.9" panel's controller chip and partial-refresh support.
 
 ## Power budget & runtime (handheld sizing)
 
@@ -223,7 +225,7 @@ Representative ESP32-family draw: Wi-Fi promiscuous RX ~95-100 mA, BLE scan roug
 
 - **Solo mode:** one chip, one baseline overhead, radios time-sliced rather than truly concurrent — realistically **~120-180 mA** combined, lower than dual-radio mode's total since there's only one MCU's overhead, but the *effective* per-radio duty cycle is reduced by the arbiter (this is the same tradeoff as the reliability risk above, just expressed as a power number instead of a detection-rate number). Add ~10-20 mA if the OLED is in use; the USB-serial path adds negligible draw.
 - **Dual-radio mode:** two chips, each fully dedicated to one radio — realistically **~150-220 mA** combined, slightly higher raw draw than solo mode, but predictable rather than degraded by arbitration.
-- **Optional GNSS** (L76K in the [Seeed XIAO build](#alternative-build--seeed-xiao-solo--dual-radio-upgrade-path)): add **~41 mA** while tracking in either mode — roughly 160-220 mA solo and 190-260 mA dual-radio. On a 1200 mAh cell with the same derating, that's about 4.5-6 hours solo and 3.5-5 hours dual-radio. E-ink adds negligible average draw (it only pulls current during a refresh).
+- **Optional GNSS** (L76K in the [Seeed XIAO build](#reference-build--seeed-xiao-solo--dual-radio-upgrade-path)): add **~41 mA** while tracking in either mode — roughly 160-220 mA solo and 190-260 mA dual-radio. On a 1200 mAh cell with the same derating, that's about 4.5-6 hours solo and 3.5-5 hours dual-radio. E-ink adds negligible average draw (it only pulls current during a refresh).
 
 Both need bench confirmation once hardware is in hand. RID beacons are spec'd at ~1 Hz, which leaves some duty-cycle slack in principle, but Wi-Fi channel-hopping across 11 channels already constrains per-channel dwell time — **run continuously for v1** in either mode rather than adding sleep-based duty-cycling, which is a later optimization once a baseline is measured.
 
