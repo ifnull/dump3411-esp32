@@ -16,10 +16,11 @@ static const uint8_t ASTM_OUI[3] = {0xFA, 0x0B, 0xBC};
 #define ASTM_OUI_TYPE 0x0D
 
 /*
- * Parrot SA's OUI. Some Remote ID beacons (Parrot, and the French Direct
- * Remote ID scheme) carry the ASTM layout under it. Parrot uses the OUI for
- * other vendor elements too, so it only counts when a valid Message Pack
- * follows.
+ * Parrot SA's OUI. Some Remote ID beacons carry the ASTM layout under it:
+ * OUI, type, send counter, Message Pack. The layout comes from Sky-Spy's
+ * receiver, not from a Parrot capture. Parrot uses the OUI for other vendor
+ * elements too, so it only counts when a valid Message Pack follows.
+ * Unrelated to the French scheme's own OUI.
  */
 static const uint8_t PARROT_OUI[3] = {0x90, 0x3A, 0xE6};
 
