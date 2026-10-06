@@ -1,0 +1,24 @@
+menu "RID bench transmitter"
+
+    config RID_TX_CENTER_LAT_E7
+        int "Center latitude of the simulated flight (degrees x 1e7)"
+        default 398283000
+        help
+            Default is the geographic center of the contiguous US, an
+            obviously fake spot for a bench test.
+
+    config RID_TX_CENTER_LON_E7
+        int "Center longitude of the simulated flight (degrees x 1e7)"
+        default -985795000
+
+    config RID_TX_WIFI_CHANNEL
+        int "Wi-Fi channel"
+        range 1 13
+        default 6
+
+    config RID_TX_WIFI_POWER_QDBM
+        int "Wi-Fi max TX power, in 0.25 dBm units (8 = 2 dBm, the minimum)"
+        range 8 84
+        default 8
+
+endmenu
