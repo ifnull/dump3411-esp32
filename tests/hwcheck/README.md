@@ -24,7 +24,7 @@ The GNSS check reports `absent` in this setup, which is expected.
 2. Attach the patch antenna, and put it near a window or outside, facing up.
 3. Keep the S3 out of the driver board for this one.
 
-The e-ink check fails in this setup, which is expected. The [bench rig](../../README.md#building-and-testing) wiring works too, with both connected at once.
+The e-ink check fails in this setup, which is expected. Breadboard wiring with both connected at once (pins per the solo-mode row of the [pin budget](../../docs/ARCHITECTURE.md#pin-budget), with the L76K's D0/D2 tied to 3V3) works too.
 
 ## Reading the results
 
