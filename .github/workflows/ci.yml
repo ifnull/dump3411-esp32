@@ -79,7 +79,7 @@ jobs:
           fi
 
   tools:
-    name: Bench transmitter and coexistence test
+    name: Bench transmitter and test apps
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.5
     defaults:
@@ -95,3 +95,4 @@ jobs:
           . "$IDF_PATH/export.sh"
           (cd tools/rid-transmitter && idf.py build)
           (cd tests/coex && idf.py build)
+          (cd tests/hwcheck && idf.py build)
